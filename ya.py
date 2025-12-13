@@ -39,7 +39,7 @@ class YaPlugin:
 
   def install(self):
     if self.is_installed():
-      print(f"\t- {bcolors.OKCYAN} {bcolors.BOLD}{bcolors.UWHITE}{self.name}{bcolors.ENDC} already installed, skipping")
+      print(f"- {bcolors.OKCYAN} {bcolors.BOLD}{bcolors.UWHITE}{self.name}{bcolors.ENDC} already installed, skipping")
       return
     _run_command(self.command)
 
@@ -78,6 +78,6 @@ class DotbotYa(dotbot.Plugin):
       status = f"{bcolors.OKGREEN} {bcolors.ENDC}"
     else:
       status = f"{bcolors.RED} {bcolors.ENDC}"
-    print(f"\t{status} installed {num_installed}/{len(data)} yazi plugins")
+    print(f"{status} installed {num_installed}/{len(data)} yazi plugins")
     return num_installed == len(data)
 
