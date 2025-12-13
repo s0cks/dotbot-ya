@@ -1,4 +1,5 @@
 import subprocess, dotbot, os
+from enum import Enum
 from pprint import PrettyPrinter
 
 class bcolors:
@@ -12,6 +13,8 @@ class bcolors:
   BOLD = '\033[1m'
   UNDERLINE = '\033[4m'
   UWHITE = '\033[4;37m'
+  WHITE = '\033[37m'
+  RED             = '\033[31m'
 
 def _run_command(command):
   if isinstance(command, list):
@@ -19,6 +22,31 @@ def _run_command(command):
   elif not isinstance(command, str):
     command = str(command)
   subprocess.run([command], shell=True, check=True)
+
+SUCCESS = 0
+SKIPPED = 1
+FAILED = 2
+
+class YaPluginStatus:
+  def __init__(self, pkg, status):
+    self.pkg = pkg
+    self.status = status
+
+  def is_success(self):
+    return self.status == SUCCESS
+  
+  def is_skipped(self):
+    return self.status == SKIPPED
+
+  def is_failed(self):
+    return self.status == FAILED
+
+  def __str__(self):
+    if self.is_success():
+      return f"{bcolors.OKGREEN} {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} installed."
+    elif self.is_skipped():
+      return f"{bcolors.WARNING}! {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} is already installed, skipping"
+    return f"{bcolors.RED} {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} failed to insall"
 
 class YaPlugin:
   def __init__(self, name):
@@ -39,9 +67,13 @@ class YaPlugin:
 
   def install(self):
     if self.is_installed():
-      print(f"- {bcolors.OKCYAN} {bcolors.BOLD}{bcolors.UWHITE}{self.name}{bcolors.ENDC} already installed, skipping")
-      return
-    _run_command(self.command)
+      return YaPluginStatus(self, SKIPPED)
+
+    try:
+      _run_command(self.command)
+      return YaPluginStatus(self, SUCCESS)
+    except Exception as ex:
+      return YaPluginStatus(self, FAILED)
 
   def __str__(self):
     return self.name
@@ -66,18 +98,23 @@ class DotbotYa(dotbot.Plugin):
 
     print(f"installing {len(data)} yazi plugins....")
     num_installed = 0
+    num_skipped = 0
+    num_failed = 0
     for name in data:
-      try:
-        pkg = YaPlugin(name)
-        pkg.install()
+      pkg = YaPlugin(name)
+      status = pkg.install()
+      print(status)
+      if status.is_success():
         num_installed = num_installed + 1
-      except Exception as ex:
-        self._log.error(f"failed to install the {plugin} plugin")
+      elif status.is_failed():
+        num_failed = num_failed + 1
+      elif status.is_skipped():
+        num_skipped = num_skipped + 1
 
-    if num_installed == len(data):
+    if (num_installed + num_skipped) == len(data):
       status = f"{bcolors.OKGREEN} {bcolors.ENDC}"
     else:
       status = f"{bcolors.RED} {bcolors.ENDC}"
     print(f"{status} installed {num_installed}/{len(data)} yazi plugins")
-    return num_installed == len(data)
+    return (num_installed + num_skipped) == len(data)
 
