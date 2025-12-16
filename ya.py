@@ -1,7 +1,87 @@
 import subprocess, dotbot
-from src import YaPlugin, bcolors
 
 __version__ = "0.0.1"
+
+
+class bcolors:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    UWHITE = "\033[4;37m"
+    WHITE = "\033[37m"
+    RED = "\033[31m"
+
+
+def run_command(command):
+    if isinstance(command, list):
+        command = " ".join(command)
+    elif not isinstance(command, str):
+        command = str(command)
+    subprocess.run([command], shell=True, check=True)
+
+
+SUCCESS = 0
+SKIPPED = 1
+FAILED = 2
+
+
+class YaPluginStatus:
+    def __init__(self, pkg, status):
+        self.pkg = pkg
+        self.status = status
+
+    def is_success(self):
+        return self.status == SUCCESS
+
+    def is_skipped(self):
+        return self.status == SKIPPED
+
+    def is_failed(self):
+        return self.status == FAILED
+
+    def __str__(self):
+        if self.is_success():
+            return f"{bcolors.OKGREEN} {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} installed."
+        elif self.is_skipped():
+            return f"{bcolors.WARNING}! {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} is already installed, skipping"
+        return f"{bcolors.RED} {bcolors.BOLD}{bcolors.WHITE}{self.pkg}{bcolors.ENDC} failed to insall"
+
+
+class YaPlugin:
+    def __init__(self, name):
+        self.name = name
+        self.command = [
+            "ya",
+            "pkg",
+            "add",
+            name,
+        ]
+
+    def is_installed(self):
+        try:
+            run_command(f"$(ya pkg list | grep {self.name} &>/dev/null)")
+            return True
+        except Exception as ex:
+            return False
+
+    def install(self):
+        if self.is_installed():
+            return YaPluginStatus(self, SKIPPED)
+
+        try:
+            run_command(self.command)
+            return YaPluginStatus(self, SUCCESS)
+        except Exception as ex:
+            return YaPluginStatus(self, FAILED)
+
+    def __str__(self):
+        return self.name
 
 
 class DotbotYa(dotbot.Plugin):
